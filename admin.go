@@ -29,10 +29,10 @@ func (app *App) adminDashboard(w http.ResponseWriter, r *http.Request) {
 	app.db.QueryRow("SELECT COUNT(*) FROM subscribers WHERE is_active = true").Scan(&subscriberCount)
 
 	app.renderTemplate(w, "admin/dashboard", map[string]interface{}{
-		"user":             user,
-		"postCount":        postCount,
-		"commentCount":     commentCount,
-		"subscriberCount":  subscriberCount,
+		"user":            user,
+		"postCount":       postCount,
+		"commentCount":    commentCount,
+		"subscriberCount": subscriberCount,
 	})
 }
 
@@ -126,10 +126,18 @@ func (app *App) createPost(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 
+	// Handle category_id: if empty, set to NULL
+	var categoryID interface{}
+	if req.CategoryID != "" {
+		categoryID = req.CategoryID
+	} else {
+		categoryID = nil
+	}
+
 	_, err = tx.Exec(`
 		INSERT INTO posts (id, title, slug, content, excerpt, featured_image, author_id, category_id, is_published)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, id, req.Title, slug, req.Content, req.Excerpt, req.FeaturedImage, user.ID, req.CategoryID, req.IsPublished)
+	`, id, req.Title, slug, req.Content, req.Excerpt, req.FeaturedImage, user.ID, categoryID, req.IsPublished)
 
 	if err != nil {
 		app.jsonError(w, 500, "Failed to create post")
@@ -142,7 +150,7 @@ func (app *App) createPost(w http.ResponseWriter, r *http.Request) {
 		tx.Exec("INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)", id, tagID)
 	}
 
-	if err := tx.Commit().Error; err != nil {
+	if err := tx.Commit(); err != nil {
 		app.jsonError(w, 500, "Database error")
 		return
 	}
@@ -203,11 +211,19 @@ func (app *App) updatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle category_id
+	var categoryID interface{}
+	if req.CategoryID != "" {
+		categoryID = req.CategoryID
+	} else {
+		categoryID = nil
+	}
+
 	_, err := app.db.Exec(`
 		UPDATE posts
 		SET title = ?, content = ?, excerpt = ?, featured_image = ?, category_id = ?, is_published = ?
 		WHERE id = ?
-	`, req.Title, req.Content, req.Excerpt, req.FeaturedImage, req.CategoryID, req.IsPublished, postID)
+	`, req.Title, req.Content, req.Excerpt, req.FeaturedImage, categoryID, req.IsPublished, postID)
 
 	if err != nil {
 		app.jsonError(w, 500, "Failed to update post")
@@ -246,9 +262,12 @@ func (app *App) togglePublish(w http.ResponseWriter, r *http.Request) {
 	var isPublished bool
 	app.db.QueryRow("SELECT is_published FROM posts WHERE id = ?", postID).Scan(&isPublished)
 
-	publishedAt := time.Now()
-	if isPublished {
-		publishedAt = time.Time{}
+	var publishedAt interface{}
+	if !isPublished {
+		now := time.Now()
+		publishedAt = now
+	} else {
+		publishedAt = nil // sets to NULL
 	}
 
 	_, err := app.db.Exec(
@@ -442,14 +461,14 @@ func (app *App) adminComments(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		comments = append(comments, map[string]interface{}{
-			"id":         c.ID,
-			"postID":     c.PostID,
-			"author":     c.AuthorName,
-			"email":      c.AuthorEmail,
-			"content":    c.Content,
-			"approved":   c.IsApproved,
-			"createdAt":  c.CreatedAt,
-			"postTitle":  postTitle,
+			"id":        c.ID,
+			"postID":    c.PostID,
+			"author":    c.AuthorName,
+			"email":     c.AuthorEmail,
+			"content":   c.Content,
+			"approved":  c.IsApproved,
+			"createdAt": c.CreatedAt,
+			"postTitle": postTitle,
 		})
 	}
 
@@ -594,6 +613,11 @@ func (app *App) updateSettings(w http.ResponseWriter, r *http.Request) {
 		`, key, value, value)
 	}
 
+	// Clear cache so next render fetches new settings
+	app.settingsMu.Lock()
+	app.settingsCache = map[string]string{}
+	app.settingsMu.Unlock()
+
 	app.jsonResponse(w, 200, map[string]string{
 		"message": "Settings updated",
 	})
@@ -656,23 +680,45 @@ func (app *App) uploadMedia(w http.ResponseWriter, r *http.Request) {
 // UTILITY FUNCTIONS
 // ============================================================================
 
+// getOrCreateTag inserts a tag if it doesn't exist, using the provided transaction if available.
+// It returns the tag ID. If tx is nil, it uses the main DB connection.
+// It also uses a local map cache within the transaction to avoid duplicate lookups.
 func (app *App) getOrCreateTag(tx *sql.Tx, tagName string) string {
 	tagName = strings.TrimSpace(tagName)
 	slug := app.slugify(tagName)
 
 	var tagID string
-	app.db.QueryRow("SELECT id FROM tags WHERE slug = ?", slug).Scan(&tagID)
+	var err error
 
-	if tagID != "" {
+	if tx != nil {
+		// Use transaction
+		err = tx.QueryRow("SELECT id FROM tags WHERE slug = ?", slug).Scan(&tagID)
+		if err == nil {
+			return tagID
+		}
+		// Insert
+		tagID = uuid.New().String()
+		_, err = tx.Exec("INSERT INTO tags (id, name, slug) VALUES (?, ?, ?)", tagID, tagName, slug)
+		if err != nil {
+			// If duplicate key, try select again (another transaction may have inserted)
+			tx.QueryRow("SELECT id FROM tags WHERE slug = ?", slug).Scan(&tagID)
+			return tagID
+		}
 		return tagID
 	}
 
-	tagID = uuid.New().String()
-	if tx != nil {
-		tx.Exec("INSERT INTO tags (id, name, slug) VALUES (?, ?, ?)", tagID, tagName, slug)
-	} else {
-		app.db.Exec("INSERT INTO tags (id, name, slug) VALUES (?, ?, ?)", tagID, tagName, slug)
+	// No transaction: use main db
+	err = app.db.QueryRow("SELECT id FROM tags WHERE slug = ?", slug).Scan(&tagID)
+	if err == nil {
+		return tagID
 	}
-
+	// Insert
+	tagID = uuid.New().String()
+	_, err = app.db.Exec("INSERT INTO tags (id, name, slug) VALUES (?, ?, ?)", tagID, tagName, slug)
+	if err != nil {
+		// If duplicate, fetch existing
+		app.db.QueryRow("SELECT id FROM tags WHERE slug = ?", slug).Scan(&tagID)
+		return tagID
+	}
 	return tagID
 }
