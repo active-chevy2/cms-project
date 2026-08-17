@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"html/template"
-	"log"
 	"net/http"
 	"strings"
 
