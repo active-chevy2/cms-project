@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscribe - CMS</title>
+  <title>Subscribe - {{ .siteTitle }}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="header">
     <div class="container">
       <div class="header-content">
-        <a href="/" class="logo">CMS</a>
+        <a href="/" class="logo">{{ .siteTitle }}</a>
         <nav>
           <ul class="nav">
             <li><a href="/">Home</a></li>
@@ -24,7 +24,7 @@
 
   <main class="container main">
     <div style="max-width: 500px; margin: 2rem auto;">
-      <h1>Subscribe to Our Newsletter</h1>
+      <h1>Subscribe to {{ .siteTitle }}</h1>
       <p>Get notified when we publish new posts.</p>
 
       <form method="POST" action="/subscribe" style="margin-top: 2rem;">
@@ -43,7 +43,7 @@
 
   <footer class="footer">
     <div class="container">
-      <p>&copy; 2024 CMS. All rights reserved.</p>
+      <p>&copy; {{ now | date "2006" }} {{ .siteTitle }}. All rights reserved.</p>
     </div>
   </footer>
 </body>
