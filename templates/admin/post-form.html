@@ -95,10 +95,12 @@
         is_published: document.getElementById('published').checked,
       };
 
-      const url = {{ if .isNew }}'..' else ''{{ end }};
-      const method = {{ if .isNew }}'POST' else 'POST'{{ end }};
+      // Determine URL and method
+      const isNew = {{ .isNew }};
+      let url = isNew ? '/admin/posts' : '/admin/posts/{{ .post.ID }}';
+      const method = 'POST'; // Backend expects POST for both create and update
 
-      fetch(`/admin/posts${url}`, {
+      fetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
