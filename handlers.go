@@ -1,17 +1,13 @@
 package main
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -94,12 +90,13 @@ func (app *App) viewPost(w http.ResponseWriter, r *http.Request) {
 	tags, _ := app.getPostTags(post.ID)
 	post.Tags = tags
 
-	// Parse markdown to HTML
+	// Parse markdown to HTML and sanitize
 	html := app.markdownToHTML(post.Content)
+	safeHTML := app.sanitizer.Sanitize(html)
 
 	app.renderTemplate(w, "post", map[string]interface{}{
 		"post":        post,
-		"content":     template.HTML(html),
+		"content":     template.HTML(safeHTML),
 		"author":      authorName,
 		"category":    categoryName,
 		"comments":    comments,
