@@ -3,31 +3,40 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 type App struct {
-	db     *sql.DB
-	router chi.Router
-	config Config
+	db            *sql.DB
+	router        chi.Router
+	config        Config
+	settingsCache map[string]string
+	settingsMu    sync.RWMutex
+	templateMu    sync.Mutex
+	templateCache map[string]*template.Template
+	sanitizer     *bluemonday.Policy
 }
 
 type Config struct {
-	DBHost       string
-	DBPort       string
-	DBUser       string
-	DBPass       string
-	DBName       string
-	JWTSecret    string
-	Port         string
-	Environment  string
+	DBHost      string
+	DBPort      string
+	DBUser      string
+	DBPass      string
+	DBName      string
+	JWTSecret   string
+	Port        string
+	Environment string
 }
 
 func init() {
@@ -46,9 +55,21 @@ func main() {
 	}
 	defer db.Close()
 
+	// Create sanitizer policy
+	policy := bluemonday.UGCPolicy()
+	// Allow tables, but we can be more permissive
+	policy.AllowElements("table", "thead", "tbody", "tr", "th", "td")
+	policy.AllowElements("figure", "figcaption")
+	policy.AllowElements("hr")
+	policy.AllowElements("pre", "code")
+	policy.AllowAttrs("class").OnElements("code", "pre")
+
 	app := &App{
-		db:     db,
-		config: config,
+		db:            db,
+		config:        config,
+		settingsCache: make(map[string]string),
+		templateCache: make(map[string]*template.Template),
+		sanitizer:     policy,
 	}
 
 	app.router = setupRoutes(app)
@@ -201,5 +222,170 @@ func corsMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		next.ServeHTTP(w, r)
+	})
+}
+
+// getSiteSettings retrieves all settings from the database, caching them in memory.
+func (app *App) getSiteSettings() map[string]string {
+	app.settingsMu.RLock()
+	if len(app.settingsCache) > 0 {
+		defer app.settingsMu.RUnlock()
+		return app.settingsCache
+	}
+	app.settingsMu.RUnlock()
+
+	app.settingsMu.Lock()
+	defer app.settingsMu.Unlock()
+
+	// Double-check after acquiring write lock
+	if len(app.settingsCache) > 0 {
+		return app.settingsCache
+	}
+
+	rows, err := app.db.Query("SELECT key, value FROM settings")
+	if err != nil {
+		log.Printf("Failed to load settings: %v", err)
+		return map[string]string{}
+	}
+	defer rows.Close()
+
+	settings := make(map[string]string)
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			continue
+		}
+		settings[key] = value
+	}
+	app.settingsCache = settings
+	return settings
+}
+
+func (app *App) renderTemplate(w http.ResponseWriter, name string, data map[string]interface{}) {
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Merge site settings
+	settings := app.getSiteSettings()
+	for k, v := range settings {
+		if _, exists := data[k]; !exists {
+			data[k] = v
+		}
+	}
+	// Provide default site title if not set
+	if _, ok := data["siteTitle"]; !ok {
+		data["siteTitle"] = "CMS"
+	}
+	if _, ok := data["siteDescription"]; !ok {
+		data["siteDescription"] = "A minimalist markdown publishing platform"
+	}
+
+	// Add template functions
+	funcMap := template.FuncMap{
+		"date": func(t interface{}, layout string) string {
+			var tm time.Time
+			switch v := t.(type) {
+			case time.Time:
+				tm = v
+			case *time.Time:
+				if v == nil {
+					return ""
+				}
+				tm = *v
+			default:
+				return ""
+			}
+			if tm.IsZero() {
+				return ""
+			}
+			return tm.Format(layout)
+		},
+		"truncate": func(s string, n int) string {
+			runes := []rune(s)
+			if len(runes) <= n {
+				return s
+			}
+			return string(runes[:n]) + "..."
+		},
+		"add": func(a, b int) int {
+			return a + b
+		},
+		"sub": func(a, b int) int {
+			return a - b
+		},
+		"default": func(def, val interface{}) interface{} {
+			if val == nil || val == "" {
+				return def
+			}
+			return val
+		},
+		"now": func() time.Time {
+			return time.Now()
+		},
+		"safeHTML": func(s string) template.HTML {
+			return template.HTML(s)
+		},
+	}
+
+	templatePath := "./templates/" + name + ".html"
+
+	app.templateMu.Lock()
+	tmpl, ok := app.templateCache[name]
+	if !ok {
+		var err error
+		tmpl, err = template.New(name).Funcs(funcMap).ParseFiles(templatePath)
+		if err != nil {
+			app.templateMu.Unlock()
+			log.Printf("Template error: %v", err)
+			app.renderError(w, 500, "Template error")
+			return
+		}
+		app.templateCache[name] = tmpl
+	}
+	app.templateMu.Unlock()
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.Execute(w, data); err != nil {
+		log.Printf("Render error: %v", err)
+	}
+}
+
+func (app *App) renderError(w http.ResponseWriter, code int, message string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(code)
+	w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Error</title>
+	<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
+		.container { max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; }
+		h1 { margin-top: 0; color: #333; }
+		p { color: #666; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Error</h1>
+		<p>` + message + `</p>
+	</div>
+</body>
+</html>`))
+}
+
+func (app *App) jsonResponse(w http.ResponseWriter, code int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(data)
+}
+
+func (app *App) jsonError(w http.ResponseWriter, code int, message string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{
+		"error": message,
 	})
 }
