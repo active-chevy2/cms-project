@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .category.Name }} - CMS</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="/" class="logo">CMS</a>
+        <nav>
+          <ul class="nav">
+            <li><a href="/">Home</a></li>
+            <li><a href="/posts">Posts</a></li>
+            <li><a href="/subscribe">Subscribe</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main">
+    <h1>{{ .category.Name }}</h1>
+    {{ if .category.Description }}<p>{{ .category.Description }}</p>{{ end }}
+
+    {{ if .posts }}
+    <ul class="post-list">
+      {{ range .posts }}
+      <li class="post-item">
+        <h3 class="post-title">
+          <a href="/posts/{{ .Slug }}">{{ .Title }}</a>
+        </h3>
+        {{ if .Excerpt }}<p>{{ .Excerpt }}</p>{{ end }}
+        <div class="post-meta">
+          {{ if .PublishedAt }}
+          <time datetime="{{ .PublishedAt | date "2006-01-02" }}">
+            {{ .PublishedAt | date "January 2, 2006" }}
+          </time>
+          {{ end }}
+        </div>
+      </li>
+      {{ end }}
+    </ul>
+    {{ else }}
+    <p>No posts in this category yet.</p>
+    {{ end }}
+
+    <p><a href="/posts">← Back to all posts</a></p>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2024 CMS. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscribed - CMS</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="/" class="logo">CMS</a>
+        <nav>
+          <ul class="nav">
+            <li><a href="/">Home</a></li>
+            <li><a href="/posts">Posts</a></li>
+            <li><a href="/subscribe">Subscribe</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main">
+    <div style="max-width: 500px; margin: 2rem auto; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">✓</div>
+      <h1>Thank You!</h1>
+      <p>You've successfully subscribed to our newsletter.</p>
+      <p style="color: var(--color-text-muted);">A confirmation email has been sent to <strong>{{ .email }}</strong>.</p>
+
+      <div style="margin-top: 2rem;">
+        <a href="/" class="button">Back to Home</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2024 CMS. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>

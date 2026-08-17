@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul>
+          <li><a href="/admin/">Dashboard</a></li>
+          <li><a href="/admin/posts">Posts</a></li>
+          <li><a href="/admin/categories">Categories</a></li>
+          <li><a href="/admin/tags">Tags</a></li>
+          <li><a href="/admin/comments">Comments</a></li>
+          <li><a href="/admin/subscribers">Subscribers</a></li>
+          <li><a href="/admin/settings" class="admin-nav-link active">Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <h1>Site Settings</h1>
+
+      <form id="settingsForm" onsubmit="submitSettings(event)">
+        <div class="form-group">
+          <label for="siteTitle">Site Title</label>
+          <input type="text" id="siteTitle" name="siteTitle" value="{{ index .settings "site_title" }}">
+        </div>
+
+        <div class="form-group">
+          <label for="siteDescription">Site Description</label>
+          <textarea id="siteDescription" name="siteDescription">{{ index .settings "site_description" }}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="siteUrl">Site URL</label>
+          <input type="url" id="siteUrl" name="siteUrl" value="{{ index .settings "site_url" }}" placeholder="https://yourdomain.com">
+        </div>
+
+        <div class="form-group">
+          <label for="postsPerPage">Posts Per Page</label>
+          <input type="number" id="postsPerPage" name="postsPerPage" value="{{ index .settings "posts_per_page" }}" min="1" max="100">
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="commentsEnabled" name="commentsEnabled" {{ if eq (index .settings "comments_enabled") "true" }}checked{{ end }}>
+            Enable Comments
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="approvalRequired" name="approvalRequired" {{ if eq (index .settings "approval_required") "true" }}checked{{ end }}>
+            Require Approval for Comments
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="darkModeDefault" name="darkModeDefault" {{ if eq (index .settings "dark_mode_default") "true" }}checked{{ end }}>
+            Dark Mode by Default
+          </label>
+        </div>
+
+        <div class="button-group">
+          <button type="submit">Save Settings</button>
+        </div>
+      </form>
+
+      <section style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--color-border);">
+        <h2>Danger Zone</h2>
+        <p style="color: var(--color-text-muted); margin-bottom: 1rem;">
+          These actions are irreversible. Use with caution.
+        </p>
+        <button onclick="if(confirm('Are you absolutely sure? This will delete all data.')) alert('Contact administrator for database reset.');" style="background-color: var(--color-danger);">
+          Reset Database
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+  <script>
+    function submitSettings(e) {
+      e.preventDefault();
+
+      const settings = {
+        site_title: document.getElementById('siteTitle').value,
+        site_description: document.getElementById('siteDescription').value,
+        site_url: document.getElementById('siteUrl').value,
+        posts_per_page: document.getElementById('postsPerPage').value,
+        comments_enabled: document.getElementById('commentsEnabled').checked,
+        approval_required: document.getElementById('approvalRequired').checked,
+        dark_mode_default: document.getElementById('darkModeDefault').checked,
+      };
+
+      fetch('/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify(settings),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.message) {
+          alert('Settings saved successfully!');
+        } else {
+          alert('Error: ' + (data.error || 'Failed to save'));
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+    }
+  </script>
+</body>
+</html>

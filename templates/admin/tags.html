@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Tags - Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul>
+          <li><a href="/admin/">Dashboard</a></li>
+          <li><a href="/admin/posts">Posts</a></li>
+          <li><a href="/admin/categories">Categories</a></li>
+          <li><a href="/admin/tags" class="admin-nav-link active">Tags</a></li>
+          <li><a href="/admin/comments">Comments</a></li>
+          <li><a href="/admin/subscribers">Subscribers</a></li>
+          <li><a href="/admin/settings">Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <h1>Tags</h1>
+
+      <div class="form-group" style="margin-bottom: 2rem;">
+        <input type="text" id="tagName" placeholder="Tag name" style="width: 100%; margin-bottom: 0.5rem;">
+        <button onclick="createTag()">Add Tag</button>
+      </div>
+
+      {{ if .tags }}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range .tags }}
+          <tr>
+            <td>{{ .Name }}</td>
+            <td><code>{{ .Slug }}</code></td>
+            <td>
+              <button onclick="deleteItem('tags', '{{ .ID }}', 'Delete tag?')">Delete</button>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      {{ else }}
+      <p>No tags yet. Tags are created automatically when you publish posts.</p>
+      {{ end }}
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+  <script>
+    function createTag() {
+      const name = document.getElementById('tagName').value;
+
+      if (!name.trim()) {
+        alert('Tag name is required');
+        return;
+      }
+
+      fetch('/admin/tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({
+          name: name,
+        }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.id) {
+          location.reload();
+        } else {
+          alert('Error: ' + (data.error || 'Failed to create'));
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+    }
+  </script>
+</body>
+</html>

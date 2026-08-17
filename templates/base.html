@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ .siteDescription | default "A minimalist markdown publishing platform" }}">
+  <meta property="og:title" content="{{ .title | default "Home" }}">
+  <meta property="og:description" content="{{ .description | default "A minimalist markdown publishing platform" }}">
+  {{ if .featured_image }}<meta property="og:image" content="{{ .featured_image }}">{{ end }}
+  <meta property="og:url" content="{{ .url }}">
+  <title>{{ .title | default "Home" }} - {{ .siteTitle | default "CMS" }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="alternate" type="application/rss+xml" href="/feed.xml">
+  <script>
+    // Dark mode toggle
+    (function() {
+      const isDark = localStorage.getItem('darkMode') || window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (isDark) document.documentElement.style.colorScheme = 'dark';
+    })();
+  </script>
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <a href="/" class="logo">{{ .siteTitle | default "CMS" }}</a>
+        <nav>
+          <ul class="nav">
+            <li><a href="/">Home</a></li>
+            <li><a href="/posts">Posts</a></li>
+            <li><a href="/subscribe">Subscribe</a></li>
+            {{ if .user }}<li><a href="/admin">Admin</a></li>{{ end }}
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main">
+    {{ block "content" . }}{{ end }}
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; {{ now | date "2006" }} {{ .siteTitle | default "CMS" }}. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Subscribers - Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul>
+          <li><a href="/admin/">Dashboard</a></li>
+          <li><a href="/admin/posts">Posts</a></li>
+          <li><a href="/admin/categories">Categories</a></li>
+          <li><a href="/admin/tags">Tags</a></li>
+          <li><a href="/admin/comments">Comments</a></li>
+          <li><a href="/admin/subscribers" class="admin-nav-link active">Subscribers</a></li>
+          <li><a href="/admin/settings">Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <div class="header-admin">
+        <h1>Email Subscribers</h1>
+        <div class="button-group">
+          <a href="/admin/subscribers/export" class="button">Export as CSV</a>
+        </div>
+      </div>
+
+      {{ if .subscribers }}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Subscribed</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range .subscribers }}
+          <tr>
+            <td>{{ .Email }}</td>
+            <td>{{ .SubscribedAt | date "Jan 2, 2006" }}</td>
+            <td>{{ if .IsActive }}<span style="color: green;">Active</span>{{ else }}<span style="color: red;">Inactive</span>{{ end }}</td>
+            <td>
+              <button onclick="deleteItem('subscribers', '{{ .ID }}', 'Remove subscriber?')">Remove</button>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      <p style="color: #666; font-size: 0.9rem;">Total active: {{ len .subscribers }}</p>
+      {{ else }}
+      <p>No subscribers yet.</p>
+      {{ end }}
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>

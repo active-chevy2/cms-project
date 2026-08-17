@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Posts - Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul>
+          <li><a href="/admin/" class="admin-nav-link">Dashboard</a></li>
+          <li><a href="/admin/posts" class="admin-nav-link active">Posts</a></li>
+          <li><a href="/admin/categories" class="admin-nav-link">Categories</a></li>
+          <li><a href="/admin/tags" class="admin-nav-link">Tags</a></li>
+          <li><a href="/admin/comments" class="admin-nav-link">Comments</a></li>
+          <li><a href="/admin/subscribers" class="admin-nav-link">Subscribers</a></li>
+          <li><a href="/admin/settings" class="admin-nav-link">Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <div class="header-admin">
+        <h1>Posts</h1>
+        <a href="/admin/posts/new" class="button">Create New Post</a>
+      </div>
+
+      {{ if .posts }}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Slug</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range .posts }}
+          <tr>
+            <td>{{ .Title }}</td>
+            <td>{{ .Slug }}</td>
+            <td>{{ if .IsPublished }}Published{{ else }}Draft{{ end }}</td>
+            <td>{{ .CreatedAt | date "Jan 2, 2006" }}</td>
+            <td>
+              <a href="/admin/posts/{{ .ID }}/edit">Edit</a>
+              <button onclick="deleteItem('posts', '{{ .ID }}', 'Delete post?')">Delete</button>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      {{ else }}
+      <p>No posts yet. <a href="/admin/posts/new">Create one</a>.</p>
+      {{ end }}
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>

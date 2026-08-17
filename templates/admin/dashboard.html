@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - CMS</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul class="admin-nav">
+          <li class="admin-nav-item">
+            <a href="/admin/" class="admin-nav-link active">Dashboard</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/admin/posts" class="admin-nav-link">Posts</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/admin/categories" class="admin-nav-link">Categories</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/admin/tags" class="admin-nav-link">Tags</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/admin/comments" class="admin-nav-link">Comments</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/admin/subscribers" class="admin-nav-link">Subscribers</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/admin/settings" class="admin-nav-link">Settings</a>
+          </li>
+          <li class="admin-nav-item">
+            <a href="/" class="admin-nav-link">View Site</a>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <div class="header-admin">
+        <h1>Dashboard</h1>
+        <p>Welcome back, {{ .user.Username }}!</p>
+      </div>
+
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <h3>{{ .postCount }}</h3>
+          <p>Published Posts</p>
+        </div>
+        <div class="stat-card">
+          <h3>{{ .commentCount }}</h3>
+          <p>Comments Pending Approval</p>
+        </div>
+        <div class="stat-card">
+          <h3>{{ .subscriberCount }}</h3>
+          <p>Email Subscribers</p>
+        </div>
+      </div>
+
+      <div class="dashboard-actions">
+        <h2>Quick Actions</h2>
+        <div class="button-group">
+          <a href="/admin/posts/new" class="button">Create New Post</a>
+          <a href="/admin/categories" class="button secondary">Manage Categories</a>
+          <a href="/admin/comments" class="button secondary">Review Comments</a>
+        </div>
+      </div>
+
+      <section class="recent-activity">
+        <h2>Recent Activity</h2>
+        <p>No recent activity to display.</p>
+      </section>
+    </main>
+  </div>
+
+  <style>
+    .dashboard-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-2xl);
+    }
+
+    .stat-card {
+      background-color: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius);
+      padding: var(--spacing-lg);
+      text-align: center;
+    }
+
+    .stat-card h3 {
+      font-size: 2rem;
+      margin: 0;
+      color: var(--color-primary);
+    }
+
+    .stat-card p {
+      margin: var(--spacing-sm) 0 0;
+      color: var(--color-text-muted);
+    }
+
+    .dashboard-actions {
+      margin-bottom: var(--spacing-2xl);
+    }
+
+    .header-admin {
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .recent-activity {
+      background-color: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      border-radius: var(--border-radius);
+      padding: var(--spacing-lg);
+    }
+  </style>
+</body>
+</html>

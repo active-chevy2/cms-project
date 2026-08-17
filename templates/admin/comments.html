@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moderate Comments - Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul>
+          <li><a href="/admin/">Dashboard</a></li>
+          <li><a href="/admin/posts">Posts</a></li>
+          <li><a href="/admin/categories">Categories</a></li>
+          <li><a href="/admin/tags">Tags</a></li>
+          <li><a href="/admin/comments" class="admin-nav-link active">Comments</a></li>
+          <li><a href="/admin/subscribers">Subscribers</a></li>
+          <li><a href="/admin/settings">Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <h1>Comments Moderation</h1>
+
+      {{ if .comments }}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Post</th>
+            <th>Author</th>
+            <th>Comment</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range .comments }}
+          <tr>
+            <td>{{ .postTitle }}</td>
+            <td>{{ .author }} ({{ .email }})</td>
+            <td>{{ .content | truncate 50 }}</td>
+            <td>{{ if .approved }}<span style="color: green;">✓ Approved</span>{{ else }}<span style="color: orange;">⏳ Pending</span>{{ end }}</td>
+            <td>{{ .createdAt | date "Jan 2, 2006" }}</td>
+            <td>
+              {{ if not .approved }}
+              <button onclick="approveComment('{{ .id }}')">Approve</button>
+              {{ end }}
+              <button onclick="deleteItem('comments', '{{ .id }}', 'Delete comment?')">Delete</button>
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      {{ else }}
+      <p>No comments yet.</p>
+      {{ end }}
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>

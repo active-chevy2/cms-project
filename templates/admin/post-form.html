@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ if .isNew }}New Post{{ else }}Edit Post{{ end }} - Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <nav class="admin-nav">
+        <ul>
+          <li><a href="/admin/">Dashboard</a></li>
+          <li><a href="/admin/posts" class="admin-nav-link active">Posts</a></li>
+          <li><a href="/admin/categories">Categories</a></li>
+          <li><a href="/admin/tags">Tags</a></li>
+          <li><a href="/admin/comments">Comments</a></li>
+          <li><a href="/admin/subscribers">Subscribers</a></li>
+          <li><a href="/admin/settings">Settings</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <h1>{{ if .isNew }}Create New Post{{ else }}Edit Post{{ end }}</h1>
+
+      <form id="postForm" onsubmit="submitPostForm(event)">
+        <div class="form-group">
+          <label for="title">Title *</label>
+          <input type="text" id="title" name="title" value="{{ .post.Title }}" required>
+        </div>
+
+        <div class="form-group">
+          <label for="excerpt">Excerpt</label>
+          <textarea id="excerpt" name="excerpt">{{ .post.Excerpt }}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="content">Content (Markdown) *</label>
+          <textarea id="content" name="content" required style="min-height: 400px;">{{ .post.Content }}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" name="category">
+            <option value="">— None —</option>
+            {{ range .categories }}
+            <option value="{{ .ID }}" {{ if eq .ID $.post.CategoryID }}selected{{ end }}>{{ .Name }}</option>
+            {{ end }}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="tags">Tags (comma-separated)</label>
+          <input type="text" id="tags" name="tags" value="{{ range .post.Tags }}{{ .Name }}, {{ end }}">
+        </div>
+
+        <div class="form-group">
+          <label for="featured-image">Featured Image URL</label>
+          <input type="url" id="featured-image" name="featured-image" value="{{ .post.FeaturedImage }}">
+          <button type="button" onclick="uploadImage()">Upload Image</button>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="published" name="published" {{ if .post.IsPublished }}checked{{ end }}>
+            Publish
+          </label>
+        </div>
+
+        <div class="button-group">
+          <button type="submit">{{ if .isNew }}Create{{ else }}Update{{ end }} Post</button>
+          <a href="/admin/posts" class="button secondary">Cancel</a>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+  <script>
+    function submitPostForm(e) {
+      e.preventDefault();
+
+      const form = document.getElementById('postForm');
+      const formData = new FormData(form);
+
+      const postData = {
+        title: formData.get('title'),
+        content: formData.get('content'),
+        excerpt: formData.get('excerpt'),
+        category_id: formData.get('category'),
+        tags: formData.get('tags').split(',').map(t => t.trim()).filter(t => t),
+        featured_image: formData.get('featured-image'),
+        is_published: document.getElementById('published').checked,
+      };
+
+      const url = {{ if .isNew }}'..' else ''{{ end }};
+      const method = {{ if .isNew }}'POST' else 'POST'{{ end }};
+
+      fetch(`/admin/posts${url}`, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify(postData),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.id || data.message) {
+          alert('Post saved successfully!');
+          window.location.href = '/admin/posts';
+        } else {
+          alert('Error: ' + (data.error || 'Failed to save'));
+        }
+      })
+      .catch(err => alert('Error: ' + err.message));
+    }
+
+    function uploadImage() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        uploadFile(file, (url) => {
+          document.getElementById('featured-image').value = url;
+        });
+      };
+      input.click();
+    }
+  </script>
+</body>
+</html>

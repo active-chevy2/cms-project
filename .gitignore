@@ -1,0 +1,36 @@
+# Binaries
+cms
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Directories
+bin/
+dist/
+.build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+
+# Uploads
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Go
+go.sum
+vendor/
