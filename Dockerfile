@@ -3,44 +3,40 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /build
 
-# Install dependencies (git is needed for go mod download)
+# Install git (needed for go mod download)
 RUN apk add --no-cache git
 
-# Copy go mod files
+# Copy go.mod and go.sum first (to cache dependency download)
 COPY go.mod go.sum* ./
+RUN go mod download
 
-# Download dependencies and tidy to ensure go.sum is complete
-RUN go mod download && go mod tidy
-
-# Copy source code
+# Now copy the rest of the source code
 COPY . .
 
-# Build application
+# Ensure go.sum is complete based on the actual imports in the source
+RUN go mod tidy
+
+# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o cms .
 
-# Final stage
+# Final lightweight stage
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binary and assets
 COPY --from=builder /build/cms .
-
-# Copy templates and static files
 COPY templates ./templates
 COPY static ./static
 
 # Create uploads directory
 RUN mkdir -p ./static/uploads && chmod 755 ./static/uploads
 
-# Expose port
 EXPOSE 3000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Run application
 CMD ["./cms"]
