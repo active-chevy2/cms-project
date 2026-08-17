@@ -19,6 +19,11 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 		}
 
 		if authHeader == "" {
+			// If request expects JSON, return 401 JSON
+			if strings.Contains(r.Header.Get("Accept"), "application/json") || r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+				app.jsonError(w, 401, "Unauthorized")
+				return
+			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
@@ -30,18 +35,30 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 		})
 
 		if err != nil || !token.Valid {
+			if strings.Contains(r.Header.Get("Accept"), "application/json") || r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+				app.jsonError(w, 401, "Invalid token")
+				return
+			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
+			if strings.Contains(r.Header.Get("Accept"), "application/json") || r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+				app.jsonError(w, 401, "Invalid token claims")
+				return
+			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 
 		userID, ok := claims["user_id"].(string)
 		if !ok {
+			if strings.Contains(r.Header.Get("Accept"), "application/json") || r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+				app.jsonError(w, 401, "Invalid user ID")
+				return
+			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
@@ -54,6 +71,10 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 		).Scan(&user.ID, &user.Email, &user.Username, &user.IsAdmin)
 
 		if err != nil {
+			if strings.Contains(r.Header.Get("Accept"), "application/json") || r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+				app.jsonError(w, 401, "User not found")
+				return
+			}
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
@@ -61,64 +82,5 @@ func (app *App) authMiddleware(next http.Handler) http.Handler {
 		// Store user in context
 		ctx := context.WithValue(r.Context(), "user", &user)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func (app *App) renderTemplate(w http.ResponseWriter, name string, data map[string]interface{}) {
-	if data == nil {
-		data = map[string]interface{}{}
-	}
-
-	templatePath := "./templates/" + name + ".html"
-
-	tmpl, err := template.ParseFiles(templatePath)
-	if err != nil {
-		log.Printf("Template error: %v", err)
-		app.renderError(w, 500, "Template error")
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := tmpl.Execute(w, data); err != nil {
-		log.Printf("Render error: %v", err)
-	}
-}
-
-func (app *App) renderError(w http.ResponseWriter, code int, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(code)
-	w.Write([]byte(`<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Error</title>
-	<style>
-		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 2rem; background: #f5f5f5; }
-		.container { max-width: 600px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; }
-		h1 { margin-top: 0; color: #333; }
-		p { color: #666; }
-	</style>
-</head>
-<body>
-	<div class="container">
-		<h1>Error</h1>
-		<p>` + message + `</p>
-	</div>
-</body>
-</html>`))
-}
-
-func (app *App) jsonResponse(w http.ResponseWriter, code int, data interface{}) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(data)
-}
-
-func (app *App) jsonError(w http.ResponseWriter, code int, message string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]string{
-		"error": message,
 	})
 }
